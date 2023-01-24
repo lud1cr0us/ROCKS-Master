@@ -1,63 +1,42 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
-	"log"
 	"net"
 	"os"
 	"strings"
+	re "rocks_master/error"
 )
 
 const (
-	DIAL_ADDR = "0.0.0.0"
-	DIAL_PORT = "9999"
-	DIAL_TYPE = "tcp"
+	AGENT_ADDR = "localhost"
+	AGENT_PORT = "7878"
+	AGENT_TYPE = "udp"
 )
 
 func main() {
-	addr := fmt.Sprintf("%v:%v", DIAL_ADDR, DIAL_PORT)
-	con, err := net.Dial(DIAL_TYPE, addr)
-	if err != nil {
-		fmt.Println("ROCKS.ERROR.FLD1: Master not reachable.")
-		os.Exit(701)
-	}
-	defer con.Close()
+				service := AGENT_ADDR + ":" + AGENT_PORT
 
-	clientReader := bufio.NewReader(os.Stdin)
-	serverReader := bufio.NewReader(con)
+				// Creating Remote Address Information field + Error Handling
+				RemoteAddr, err := net.ResolveUDPAddr(AGENT_TYPE, service)
+				re.Encounter(re.ErrorInformation{ErrorType: "FATAL", Error: err})
 
-	for {
-		// Waiting for the client request
-		clientRequest, err := clientReader.ReadString('\n')
+				// Dialing AGENT via UDP + Error Handling
+				conn, err := net.DialUDP(AGENT_TYPE, nil, RemoteAddr)
+				re.Encounter(re.ErrorInformation{ErrorType: "FATAL", Error: err})
+				defer conn.Close()
 
-		switch err {
-		case nil:
-			clientRequest := strings.TrimSpace(clientRequest)
-			if _, err = con.Write([]byte(clientRequest + "\n")); err != nil {
-				log.Printf("failed to send the client request: %v\n", err)
-			}
-		case io.EOF:
-			log.Println("client closed the connection")
-			return
-		default:
-			log.Printf("client error: %v\n", err)
-			return
-		}
+				// getting metric from cli argument and transmitting it to the client + Error Handling
+				input := strings.TrimSuffix(os.Args[1], "\n")
+				message := []byte(input)
+				_, err = conn.Write(message)
+				re.Encounter(re.ErrorInformation{ErrorType: "FATAL", Error: err})
 
-		// Waiting for the server response
-		serverResponse, err := serverReader.ReadString('\n')
+				// Creating Buffer and writing the response of the ROCKS Agent to it
+				buffer := make([]byte, 1024)
+				n, _, err := conn.ReadFromUDP(buffer)
 
-		switch err {
-		case nil:
-			log.Println(strings.TrimSpace(serverResponse))
-		case io.EOF:
-			log.Println("server closed the connection")
-			return
-		default:
-			log.Printf("server error: %v\n", err)
-			return
-		}
-	}
+				//Printing the Metric Result
+				fmt.Println(string(buffer[:n]))
+
 }

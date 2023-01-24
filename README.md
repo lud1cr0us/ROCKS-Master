@@ -8,13 +8,11 @@ ROCKS is a unified protocol, that is made for transmitting metrics as fast as po
 
 ## ROCKS Master
 
-
-
-## RETURNS
+### Status Codes
 
 |Code|Status|
 |----|------|
-|SCS600|Message successfully recieved|
+|SCS600|Metric successfully recieved|
 |SCS601|Client closed Connection expected|
 |SCS602||
 |SCS603||
